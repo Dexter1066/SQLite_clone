@@ -57,7 +57,7 @@ void close_input_buffer(InputBuffer* input_buffer){
 MetaCommandResult execute_meta_command(InputBuffer* input_buffer, Table* table){
     if(strcmp(input_buffer->buffer, ".exit") == 0){
         close_input_buffer(input_buffer);
-        free_table(table);
+        db_close(table);
         exit(EXIT_SUCCESS);
     }
     else{
@@ -111,9 +111,14 @@ PrepareResult prepare_statement(InputBuffer* input_buffer, Statement* statement)
 
 
 int main(int argc, char* argv[]){
-    
+    if (argc < 2){
+        printf("Must supply a database filename");
+        exit(EXIT_FAILURE);
+    }
+    char* filename = argv[1];
+    Table* table = db_open(filename);
+
     InputBuffer* input_buffer = new_input_buffer();
-    Table* table = new_table();
     while(true){
         print_prompt();
         read_input(input_buffer);

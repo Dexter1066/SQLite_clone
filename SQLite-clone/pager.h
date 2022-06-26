@@ -13,6 +13,12 @@ typedef struct {
     char email[COLUMN_EMAIL_SIZE + 1];
 }Row;
 
+typedef struct {
+    int file_descriptor;
+    uint32_t file_length;
+    void* pages[TABLE_MAX_PAGES];
+}Pager;
+
 const uint32_t ID_SIZE = size_of_attribute(Row, id);
 const uint32_t STUDENT_NAME_SIZE = size_of_attribute(Row, student_name);
 const uint32_t EMAIL_SIZE = size_of_attribute(Row, email);
@@ -27,9 +33,13 @@ const uint32_t TABLE_MAX_ROWS = ROWS_PER_PAGE * TABLE_MAX_PAGES;
 
 typedef struct{
     uint32_t num_rows;
-    void* pages[TABLE_MAX_PAGES];
+    Pager* pager;
 }Table;
 
+void* get_page(Pager* pager, uint32_t page_num);
 void* row_slot(Table* table, uint32_t row_num);
-Table* new_table();
-void free_table();
+Pager* pager_open(const char* filename);
+void pager_flush(Pager* pager, uint32_t page_num, uint32_t size);
+Table* db_open(const char* filename);
+void db_close(Table* table);
+
