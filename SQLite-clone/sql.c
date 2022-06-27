@@ -38,6 +38,15 @@ void print_prompt(){
     printf("db > ");
 }
 
+void print_leaf_node(void* node) {
+    uint32_t num_cells = *leaf_node_num_cells(node);
+    printf("leaf (size %d)\n", num_cells);
+    for (uint32_t i = 0; i < num_cells; i++) {
+        uint32_t key = *leaf_node_key(node, i);
+        printf("  - %d : %d\n", i, key);
+    }
+}
+
 void read_input(InputBuffer* input_buffer){
     ssize_t bytes_read = getline(&(input_buffer->buffer), &(input_buffer->buffer_length), stdin);
 
@@ -54,11 +63,58 @@ void close_input_buffer(InputBuffer* input_buffer){
     free(input_buffer);
 }
 
+Table* db_open(const char* filename){
+    Pager* pager = pager_open(filename);
+
+    Table* table = (Table*)malloc(sizeof(Table));
+    table->pager = pager;
+    table->root_page_num = 0;
+
+    if (pager->num_pages == 0){ // new database file
+        void* root_node = get_page(pager, 0);
+        initialize_leaf_node(root_node);
+    }
+    return table;
+}
+
+void db_close(Table* table) {
+    Pager* pager = table->pager;
+
+    for (uint32_t i = 0; i < pager->num_pages; i++) {
+        if (pager->pages[i] == NULL) {
+            continue;
+        }
+        pager_flush(pager, i);
+        free(pager->pages[i]);
+        pager->pages[i] = NULL;
+    }
+
+    int result = close(pager->file_descriptor);
+    if (result == -1) {
+        printf("Error closing db file.\n");
+        exit(EXIT_FAILURE);
+    }
+    for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++) {
+        void* page = pager->pages[i];
+        if (page) {
+            free(page);
+            pager->pages[i] = NULL;
+        }
+    }
+    free(pager);
+    free(table);
+}
+
 MetaCommandResult execute_meta_command(InputBuffer* input_buffer, Table* table){
     if(strcmp(input_buffer->buffer, ".exit") == 0){
         close_input_buffer(input_buffer);
         db_close(table);
         exit(EXIT_SUCCESS);
+    }
+    else if (strcmp(input_buffer->buffer, ".btree") == 0) {
+        printf("Tree:\n");
+        print_leaf_node(get_page(table->pager, 0));
+        return META_COMMAND_SUCCESS;
     }
     else{
         return META_COMMAND_UNRECOGNIZED_COMMAND;
@@ -108,7 +164,6 @@ PrepareResult prepare_statement(InputBuffer* input_buffer, Statement* statement)
     
     return PREPARE_UNRECOGNIZED_STATEMENT;
 }
-
 
 int main(int argc, char* argv[]){
     if (argc < 2){

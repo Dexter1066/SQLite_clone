@@ -23,27 +23,17 @@ void print_row(Row* row){
     printf("(%d, %s, %s)\n", row->id, row->student_name, row->email);
 }
 
-void serialize_row(Row* source, void* destination){
-    memcpy(destination + ID_OFFSET, &(source->id), ID_SIZE);
-    memcpy(destination + STUDENT_NAME_OFFSET, &(source->student_name), STUDENT_NAME_SIZE);
-    memcpy(destination + EMAIL_OFFSET, &(source->email), EMAIL_SIZE);
-}
-
-void deserialize_row(void* source, Row* destination){
-    memcpy(&(destination->id), source + ID_OFFSET, ID_SIZE);
-    memcpy(&(destination->student_name), source + STUDENT_NAME_OFFSET, STUDENT_NAME_SIZE);
-    memcpy(&(destination->email), source + EMAIL_OFFSET, EMAIL_SIZE);
-}
-
 ExecuteResult execute_insert(Statement* statement, Table* table){
     //printf("Num_rows is %d. Reported by insert.\n", table->num_rows);
-    if (table->num_rows >= TABLE_MAX_ROWS)
+    void* node = get_page(table->pager, table->root_page_num);
+    if ((*leaf_node_num_cells(node)) >= LEAF_NODE_MAX_CELLS) {
         return EXECUTE_TABLE_FULL;
+    }
 
     Row* row_to_insert = &(statement->row_to_insert);
     Cursor* cursor = table_end(table);
-    serialize_row(row_to_insert, cursor_value(cursor));
-    table->num_rows += 1;
+
+    leaf_node_insert(cursor, row_to_insert->id, row_to_insert);
 
     return EXECUTE_SUCCESS;
 }
