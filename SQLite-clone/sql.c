@@ -73,6 +73,7 @@ Table* db_open(const char* filename){
     if (pager->num_pages == 0){ // new database file
         void* root_node = get_page(pager, 0);
         initialize_leaf_node(root_node);
+        set_node_root(root_node, true);
     }
     return table;
 }
@@ -212,6 +213,9 @@ int main(int argc, char* argv[]){
                 break;
             case (EXECUTE_TABLE_FULL):
                 printf("Error: Table full.\n");
+                break;
+            case (EXECUTE_DUPLICATE_KEY):
+                printf("Error: Duplicate key.\n");
                 break;
         }
     }
